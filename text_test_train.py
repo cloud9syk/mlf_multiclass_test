@@ -15,7 +15,7 @@ RANDOM_STATE = 42
 TEST_SIZE = 0.3
 stopWords = set(stopwords.words('english'))
 Featured_data_info = {'dtypes': [dtype('O'), dtype('int64'), dtype('int64'), dtype('int64'),dtype('int64')],
-                      'names': ['processed', 'length', 'words_not_stopwords', 'commas','mean_length']}
+                      'names': ['text', 'length', 'words_not_stopwords', 'commas','mean_length']}
 author_mapping_dict = {'EAP': 0, 'HPL': 1, 'MWS': 2}
 
 
@@ -89,7 +89,7 @@ class TextProcess(BaseEstimator, TransformerMixin):
         commas = text.apply(lambda x: x.count(','))
         mean_length = processed.apply(lambda x: np.mean([len(w) for w in str(x).split()]))
         new = np.column_stack((processed, length, words_not_stopwords, commas, mean_length))
-        new_df = pd.DataFrame(new, columns=['processed', 'length', 'words_not_stopwords', 'commas', 'mean_length'])
+        new_df = pd.DataFrame(new, columns=['text', 'length', 'words_not_stopwords', 'commas', 'mean_length'])
         new_df[['length', 'words_not_stopwords', 'commas', 'mean_length']] = new_df[['length',
                                                                                      'words_not_stopwords',
                                                                                      'commas',
@@ -171,7 +171,7 @@ def model_trainer(df_X, df_y, data_info):
         y_test = y.loc[test_index].values.ravel()
 
     text_pipe = Pipeline([
-        ('selector', TextSelector('processed')),
+        ('selector', TextSelector('text')),
         ('vectorizer', CountVectorizer()),
         ('tfidf_trans', TfidfTransformer())
     ])
@@ -198,7 +198,7 @@ def model_trainer(df_X, df_y, data_info):
 
     param_grids = {
         'xgb_clf__max_depth': [8],
-        'xgb_clf__learning_rate': [0.35],
+        'xgb_clf__learning_rate': [0.3,0.35],
         'xgb_clf__objective': ['multi:softprob'],
         'xgb_clf__silent': [1],
         'xgb_clf__min_child_weight': [1],
@@ -218,11 +218,13 @@ def model_trainer(df_X, df_y, data_info):
     y = np.r_[y_train, y_test]
 
     best_model.fit(X,y)
-    feat_importance = best_model.named_steps['xgb_clf'].feature_importances_
+    feat_importances = best_model.named_steps['xgb_clf'].feature_importances_
     best_params = model.best_params_
 
     preprocess_pipe.fit_transform(X)
     vec_feature_names=preprocess_pipe.named_steps['union'].transformer_list[0][1].named_steps['vectorizer'].get_feature_names()
+    zipped = list(zip(vec_feature_names, feat_importances))
+    filtered = list(filter(lambda x: x[1] > 0, zipped))
 
     model_info = {
         'model': best_model,
@@ -231,7 +233,7 @@ def model_trainer(df_X, df_y, data_info):
             'log_loss': mlog_loss
         },
         'interpretation': {
-            'feature_importances': list(sorted(zip(vec_feature_names, feat_importance),key=lambda x:x[1],reverse=True))
+            'feature_importances': list(sorted(filtered,key=lambda x:x[1],reverse=True))
         }
     }
 
