@@ -79,7 +79,7 @@ class TextProcess(BaseEstimator, TransformerMixin):
         commas = processed.apply(lambda x: x.count(','))
         mean_length = processed.apply(lambda x: np.mean([len(w) for w in str(x).split()]))
         new = np.column_stack((processed, length, words_not_stopwords, commas, mean_length))
-        new_df = pd.DataFrame(new, columns=['text', 'length', 'words_not_stopwords', 'commas', 'mean_length'])
+        new_df = pd.DataFrame(new, columns=['processed', 'length', 'words_not_stopwords', 'commas', 'mean_length'])
         new_df[['length', 'words_not_stopwords', 'commas', 'mean_length']] = new_df[['length',
                                                                                      'words_not_stopwords',
                                                                                      'commas',
